@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import bcryptjs from "bcryptjs";
 import httpStatus from "http-status-codes";
@@ -47,26 +46,40 @@ const getNewaccesToken = async (refreshToken: string) => {
     accessToken: newAccessToken,
   };
 };
+
 const resetPassword = async (
-  oldpassword: string,
-  newpassword: string,
+  oldPassword: string,
+  newPassword: string,
   decodedToken: JwtPayload
 ) => {
-  const user = await User.findById(decodedToken.userId);
-  const isOldpasswordMatch = await bcryptjs.compare(
-    oldpassword,
-    user!.password as string
-  );
-  if (!isOldpasswordMatch) {
-    throw new AppError(httpStatus.UNAUTHORIZED, "old Password does not match");
+  const user = await User.findById(decodedToken._id);
+  console.log(user);
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "User does not exist");
   }
-  user!.password = await bcryptjs.hash(
-    newpassword,
+
+  // পুরানো পাসওয়ার্ড match করানো
+  const isOldPasswordMatch = await bcryptjs.compare(
+    oldPassword,
+    user.password as string
+  );
+
+  if (!isOldPasswordMatch) {
+    throw new AppError(httpStatus.UNAUTHORIZED, "Old Password does not match");
+  }
+
+  // নতুন পাসওয়ার্ড hash করা
+  user.password = await bcryptjs.hash(
+    newPassword,
     Number(envVars.BCRYPT_SALT_ROUND)
   );
-  user!.save();
+
+  await user.save();
+
+  return { _id: user._id, email: user.email };
 };
 export const AuthServices = {
   credentialsLogin,
   getNewaccesToken,
+  resetPassword,
 };

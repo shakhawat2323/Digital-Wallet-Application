@@ -21,8 +21,6 @@ export const checkAuth =
         accessToken,
         envVars.JWT_ACCESS_SECRET
       ) as JwtPayload;
-      // const isUserExist = await User.findOne({ email: decoded.email });
-
       const isUserExist = await User.findOne({ email: decoded.email }).populate(
         "wallets"
       );
