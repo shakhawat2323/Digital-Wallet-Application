@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import bcryptjs from "bcryptjs";
 import httpStatus from "http-status-codes";
@@ -11,6 +12,7 @@ import {
   createUserTokens,
 } from "../../utils/userToken";
 import { JwtPayload } from "jsonwebtoken";
+import { Wallet } from "../wallet/wallet.model";
 
 const credentialsLogin = async (Payload: Partial<IUser>) => {
   const { email, password } = Payload;
@@ -78,6 +80,30 @@ const resetPassword = async (
 
   return { _id: user._id, email: user.email };
 };
+export const createUserWithWallet = async (userData: any) => {
+  // 1. User create
+  const user = await User.create(userData);
+
+  // 2. Wallet create
+  const wallet = await Wallet.create({
+    user: user._id,
+    balance: 50,
+    currency: "BDT",
+    type: "PERSONAL",
+    status: "ACTIVE",
+    isActive: true,
+  });
+
+  if (!user.wallets) {
+    user.wallets = [];
+  }
+
+  user.wallets.push(wallet._id);
+  await user.save();
+
+  return user;
+};
+
 export const AuthServices = {
   credentialsLogin,
   getNewaccesToken,
