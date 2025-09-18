@@ -27,7 +27,7 @@ const userSchema = new Schema<IUser>(
       enum: Object.values(AgentActive),
       default: AgentActive.APPROVED,
     },
-    // isVerified: { type: Boolean, default: false },
+    isVerified: { type: Boolean, default: false },
     role: {
       type: String,
       enum: Object.values(Role),

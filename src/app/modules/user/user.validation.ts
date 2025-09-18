@@ -9,7 +9,7 @@ export const createUserZodSchema = z.object({
     .max(50, { message: "Name cannot exceed 50 characters." }),
 
   email: z
-    .string({ error: "Email must be string" })
+
     .email({ message: "Invalid email address format." })
     .min(5, { message: "Email must be at least 5 characters long." })
     .max(100, { message: "Email cannot exceed 100 characters." }),
@@ -26,12 +26,13 @@ export const createUserZodSchema = z.object({
       message: "Password must contain at least 1 number.",
     }),
   phone: z
-    .string({ error: "Phone Number must be string" })
+    .string({ error: "Enter Your country code" })
     .regex(/^(?:\+8801\d{9}|01\d{9})$/, {
       message:
         "Phone number must be valid for Bangladesh. Format: +8801XXXXXXXXX or 01XXXXXXXXX",
     })
     .optional(),
+
   picture: z
     .string()
     .url({ message: "Picture must be a valid URL" })
@@ -72,10 +73,9 @@ export const updateUserZodSchema = z.object({
     })
     .optional(),
   phone: z
-    .string({ error: "Phone Number must be string" })
+    .string({ error: "Enter Your country code" })
     .regex(/^(?:\+8801\d{9}|01\d{9})$/, {
-      message:
-        "Phone number must be valid for Bangladesh. Format: +8801XXXXXXXXX or 01XXXXXXXXX",
+      message: "Enter Your country code. Format: +8801XXXXXXXXX or 01XXXXXXXXX",
     })
     .optional(),
 

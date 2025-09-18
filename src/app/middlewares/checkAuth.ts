@@ -4,7 +4,7 @@ import { envVars } from "../config/env";
 import { JwtPayload } from "jsonwebtoken";
 import httpStatus from "http-status-codes";
 import AppError from "../errorHelpers/AppError";
-import { IsActive } from "../modules/user/user.interface";
+import { IsActive, Role } from "../modules/user/user.interface";
 import User from "../modules/user/user.model";
 import { Wallet } from "../modules/wallet/wallet.model";
 
@@ -12,7 +12,7 @@ export const checkAuth =
   (...authRoles: string[]) =>
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const accessToken = req.headers.authorization;
+      const accessToken = req.headers.authorization || req.cookies.accessToken;
       if (!accessToken) {
         throw new AppError(403, "No Token Received");
       }
@@ -21,12 +21,16 @@ export const checkAuth =
         accessToken,
         envVars.JWT_ACCESS_SECRET
       ) as JwtPayload;
+
       const isUserExist = await User.findOne({ email: decoded.email }).populate(
         "wallets"
       );
 
       if (!isUserExist) {
         throw new AppError(httpStatus.BAD_REQUEST, "User does not exist");
+      }
+      if (!isUserExist.isVerified) {
+        throw new AppError(httpStatus.BAD_REQUEST, "User is not verified");
       }
 
       if (
@@ -43,37 +47,49 @@ export const checkAuth =
         throw new AppError(403, `You are not authorized as ${decoded.role}`);
       }
 
-      const blockedWallet = await Wallet.findOne({
-        user: isUserExist._id,
-        status: "BLOCKED",
-      });
+      // Wallet block check শুধুমাত্র AGENT/USER এর জন্য
+      if (decoded.role === Role.AGENT || decoded.role === Role.USER) {
+        const blockedWallet = await Wallet.findOne({
+          user: isUserExist._id,
+          status: "BLOCKED",
+        });
 
-      if (blockedWallet) {
-        throw new AppError(
-          httpStatus.FORBIDDEN,
-          "Your wallet is BLOCKED, no transactions allowed"
-        );
+        if (blockedWallet) {
+          throw new AppError(
+            httpStatus.FORBIDDEN,
+            "Your wallet is BLOCKED, no transactions allowed"
+          );
+        }
       }
 
-      let walletId;
+      let walletId: string | undefined;
+      let walletEmail: string | undefined;
 
-      if (decoded.role === "AGENT" || decoded.role === "USER") {
+      if (decoded.role === Role.AGENT || decoded.role === Role.USER) {
         if (!isUserExist.wallets || isUserExist.wallets.length === 0) {
           throw new Error("User has no wallet");
         }
-        walletId = isUserExist.wallets[0]._id;
+
+        const wallet = await Wallet.findById(isUserExist.wallets[0]._id);
+        if (!wallet) throw new Error("Wallet not found");
+
+        walletId = wallet._id.toString();
+        walletEmail = wallet.email;
       }
 
+      // req.user-এ সব role এর data store করবো
       req.user = {
         _id: isUserExist._id,
         email: decoded.email,
+        userId: isUserExist._id.toString(),
         role: decoded.role,
-        wallet: walletId,
+        walletId, // ADMIN এর ক্ষেত্রে undefined হবে
+        walletEmail,
       };
 
+      console.log(req.user, "req.user");
       next();
     } catch (error) {
       next(error);
     }
   };
-// thered code

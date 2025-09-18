@@ -31,7 +31,7 @@ export const seedAdmin = async () => {
       role: Role.ADMIN,
       email: envVars.ADMIN_EMAIL,
       password: hashedPassword,
-      // isVerified: true,
+      isVerified: true,
       auths: [authProvider],
       wallets: [],
     };

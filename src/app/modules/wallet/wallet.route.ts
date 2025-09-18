@@ -3,20 +3,14 @@ import { WalletControllers } from "./wallet.controller";
 import { checkAuth } from "../../middlewares/checkAuth";
 import { validateRequest } from "../../middlewares/validateRequest";
 import {
-  createWalletSchema,
   depositSchema,
+  sendMoneySchema,
   withdrawSchema,
 } from "./wallet.validation";
 import { Role } from "../user/user.interface";
 
 const router = Router();
 
-router.post(
-  "/create",
-  checkAuth(Role.USER),
-  validateRequest(createWalletSchema),
-  WalletControllers.createWallet
-);
 router.get(
   "/me",
   checkAuth(Role.USER), //
@@ -29,6 +23,7 @@ router.post(
   validateRequest(depositSchema),
   WalletControllers.depositMoney
 );
+router.get("/overview", checkAuth(Role.USER), WalletControllers.getMyOverview);
 
 router.post(
   "/withdraw",
@@ -36,12 +31,11 @@ router.post(
   validateRequest(withdrawSchema),
   WalletControllers.withdrawMoney
 );
-router.post("/send-money", checkAuth(Role.USER), WalletControllers.sendMoney);
-
-router.get(
-  "/transactions/me",
+router.post(
+  "/send-money",
   checkAuth(Role.USER),
-  WalletControllers.getMyTransactions
+  validateRequest(sendMoneySchema),
+  WalletControllers.sendMoney
 );
 
 export const WalletRoutes = router;

@@ -21,13 +21,20 @@ export enum Currency {
   EUR = "EUR",
   INR = "INR",
 }
+export enum AgentActive {
+  APPROVED = "APPROVED",
+  BLOCKED = "BLOCKED",
+}
 
 /** Wallet Schema */
 export interface IWallet {
   _id?: Types.ObjectId;
   user: string;
+  email: string;
+
   balance: number;
   currency: Currency;
   type: WalletType;
   isActive?: boolean;
+  createdAt?: Date;
 }

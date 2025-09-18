@@ -12,6 +12,8 @@ const walletSchema = new Schema<IWallet>(
       required: true,
       default: Currency.BDT,
     },
+    email: { type: String, required: true },
+
     type: {
       type: String,
       enum: Object.values(WalletType),

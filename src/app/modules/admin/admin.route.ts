@@ -14,13 +14,9 @@ router.get(
   AdminControllers.getTransactions
 );
 
+router.patch("/block/:id", checkAuth(Role.ADMIN), AdminControllers.blockWallet);
 router.patch(
-  "/wallets/block/:id",
-  checkAuth(Role.ADMIN),
-  AdminControllers.blockWallet
-);
-router.patch(
-  "/wallets/unblock/:id",
+  "/unblock/:id",
   checkAuth(Role.ADMIN),
   AdminControllers.unblockWallet
 );
@@ -36,4 +32,15 @@ router.patch(
   AdminControllers.suspendAgent
 );
 
+router.get(
+  "/blockwallet",
+  checkAuth(Role.ADMIN),
+  AdminControllers.getBlockedWallets
+);
+
+router.get(
+  "/suspended-agents",
+  checkAuth(Role.ADMIN),
+  AdminControllers.getSuspendedAgents
+);
 export const AdminRoutes = router;

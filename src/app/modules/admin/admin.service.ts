@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from "http-status-codes";
 import AppError from "../../errorHelpers/AppError";
 
@@ -48,27 +49,53 @@ const getTransactions = async () => {
   };
 };
 
-//  Block wallet
 const blockWallet = async (walletId: string) => {
-  const wallet = await Wallet.findById(walletId);
+  const wallet = await Wallet.findById(walletId).populate("user"); // user populate
+
   if (!wallet) {
     throw new AppError(httpStatus.NOT_FOUND, "Wallet not found");
   }
+
+  // wallet block
   wallet.status = "BLOCKED";
   wallet.isActive = false;
   await wallet.save();
+
+  // wallet block
+  wallet.status = "BLOCKED";
+  wallet.isActive = false;
+  await wallet.save();
+
+  // user status block
+  if (wallet.user) {
+    const userId =
+      typeof wallet.user === "object" ? (wallet.user as any)._id : wallet.user;
+    await User.findByIdAndUpdate(userId, { status: "BLOCKED" });
+  }
+
   return wallet;
 };
 
-//  Unblock wallet
+// Unblock wallet
 const unblockWallet = async (walletId: string) => {
-  const wallet = await Wallet.findById(walletId);
+  const wallet = await Wallet.findById(walletId).populate("user");
+
   if (!wallet) {
     throw new AppError(httpStatus.NOT_FOUND, "Wallet not found");
   }
+
+  // wallet unblock
   wallet.status = "ACTIVE";
   wallet.isActive = true;
   await wallet.save();
+
+  // user status approved
+  if (wallet.user) {
+    const userId =
+      typeof wallet.user === "object" ? (wallet.user as any)._id : wallet.user;
+    await User.findByIdAndUpdate(userId, { status: "APPROVED" });
+  }
+
   return wallet;
 };
 
@@ -106,6 +133,32 @@ const suspendAgent = async (agentId: string) => {
   return agent;
 };
 
+const getBlockedWallets = async () => {
+  const wallets = await Wallet.find({ status: "BLOCKED" });
+  const total = await Wallet.countDocuments({ status: "BLOCKED" });
+
+  return {
+    data: wallets,
+    meta: { total },
+  };
+};
+
+const getSuspendedAgents = async () => {
+  const agents = await User.find({
+    role: Role.AGENT,
+    status: AgentActive.SUSPENDED,
+  });
+
+  const total = await User.countDocuments({
+    role: Role.AGENT,
+    status: AgentActive.SUSPENDED,
+  });
+
+  return {
+    data: agents,
+    meta: { total },
+  };
+};
 export const AdminServices = {
   getUsers,
   getAgents,
@@ -115,4 +168,6 @@ export const AdminServices = {
   unblockWallet,
   approveAgent,
   suspendAgent,
+  getBlockedWallets, // ✅ এখন কাজ করবে
+  getSuspendedAgents, // ✅ এখন কাজ করবে
 };

@@ -88,7 +88,7 @@ const resetPassword = catchAsync(
 const googleCallbackController = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     let redirectTo = req.query.state ? (req.query.state as string) : "";
-
+    console.log(redirectTo);
     if (redirectTo.startsWith("/")) {
       redirectTo = redirectTo.slice(1);
     }
@@ -105,9 +105,25 @@ const googleCallbackController = catchAsync(
     }
 
     const tokenInfo = createUserTokens(user);
+    console.log(tokenInfo);
     setAuthCookie(res, tokenInfo);
     console.log(tokenInfo);
     res.redirect(`${envVars.FRONTEND_URL}/${redirectTo}`);
+  }
+);
+const setPassword = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const decodedToken = req.user as JwtPayload;
+    const { password } = req.body;
+
+    await AuthServices.setPassword(decodedToken.userId, password);
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Password Changed Successfully",
+      data: null,
+    });
   }
 );
 
@@ -117,4 +133,5 @@ export const AuthControllers = {
   logout,
   resetPassword,
   googleCallbackController,
+  setPassword,
 };

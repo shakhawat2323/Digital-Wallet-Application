@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Types } from "mongoose";
+
 import { Currency, WalletType } from "./wallet.interface";
 
 // Create Wallet Validation
@@ -14,16 +14,20 @@ export const createWalletSchema = z.object({
 
 // Deposit Validation
 export const depositSchema = z.object({
-  walletId: z.string().refine((val) => Types.ObjectId.isValid(val), {
-    message: "Invalid WalletId",
-  }),
+  email: z.email("Invalid email format"),
   amount: z.number().positive("Deposit amount must be greater than 0"),
 });
 
 // Withdraw Validation
 export const withdrawSchema = z.object({
-  walletId: z.string().refine((val) => Types.ObjectId.isValid(val), {
-    message: "Invalid WalletId",
-  }),
+  email: z.email("Invalid email format"),
   amount: z.number().positive("Withdraw amount must be greater than 0"),
+});
+
+export const sendMoneySchema = z.object({
+  receiverEmail: z.email("Receiver email must be a valid email address"),
+  amount: z
+    .number()
+    .positive("Amount must be a positive number")
+    .min(10, "Minimum transfer amount is 10 BDT"),
 });

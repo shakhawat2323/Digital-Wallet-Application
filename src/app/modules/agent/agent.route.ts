@@ -7,15 +7,5 @@ const router = Router();
 
 router.post("/cash-in", checkAuth(Role.AGENT), AgentControllers.cashIn);
 router.post("/cash-out", checkAuth(Role.AGENT), AgentControllers.cashOut);
-// router.get(
-//   "/commissions",
-//   checkAuth(Role.AGENT),
-//   AgentControllers.getCommissions
-// );
-// router.get(
-//   "/transactions/me",
-//   checkAuth(Role.USER, Role.AGENT),
-//   AgentControllers.getMyTransactions
-// );
 
 export const AgentRoutes = router;

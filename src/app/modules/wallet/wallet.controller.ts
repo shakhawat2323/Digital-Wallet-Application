@@ -3,6 +3,10 @@ import { Request, Response } from "express";
 import { WalletServices } from "./wallet.service";
 import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
+import AppError from "../../errorHelpers/AppError";
+import User from "../user/user.model";
+import { Wallet } from "./wallet.model";
+import { Transaction } from "../transaction/transaction.model";
 
 // Create Wallet
 const createWallet = catchAsync(async (req: Request, res: Response) => {
@@ -29,21 +33,33 @@ const getMyWallet = catchAsync(async (req: any, res: Response) => {
 
 // Deposit
 const depositMoney = catchAsync(async (req: Request, res: Response) => {
-  const { walletId, amount } = req.body;
-  const wallet = await WalletServices.depositMoney(walletId, amount);
+  const { email, amount } = req.body;
+
+  const wallet = await WalletServices.depositMoney(email, amount);
 
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: "Deposit successful",
-    data: wallet,
+    data: {
+      wallet: {
+        email: wallet.wallet.email,
+        balance: wallet.wallet.balance,
+      },
+      transaction: {
+        id: wallet.transaction._id,
+        type: wallet.transaction.type,
+        status: wallet.transaction.status,
+        amount: wallet.transaction.amount,
+      },
+    },
   });
 });
 
 // Withdraw
 const withdrawMoney = catchAsync(async (req: Request, res: Response) => {
-  const { walletId, amount } = req.body;
-  const wallet = await WalletServices.withdrawMoney(walletId, amount);
+  const { email, amount } = req.body;
+  const wallet = await WalletServices.withdrawMoney(email, amount);
 
   sendResponse(res, {
     statusCode: 200,
@@ -55,12 +71,12 @@ const withdrawMoney = catchAsync(async (req: Request, res: Response) => {
 // Send Money
 
 const sendMoney = catchAsync(async (req: Request, res: Response) => {
-  const { receiverWalletId, amount } = req.body;
-  const senderUserId = req.user._id;
+  const senderEmail = req.user?.walletEmail;
+  const { receiverEmail, amount } = req.body;
 
-  const transaction = await WalletServices.sendMoney(
-    senderUserId,
-    receiverWalletId,
+  const result = await WalletServices.sendMoney(
+    senderEmail as string,
+    receiverEmail,
     amount
   );
 
@@ -68,30 +84,40 @@ const sendMoney = catchAsync(async (req: Request, res: Response) => {
     statusCode: 200,
     success: true,
     message: "Money sent successfully",
+    data: result,
+  });
+});
+const getMyOverview = catchAsync(async (req: any, res: Response) => {
+  const userId = req.user._id;
+
+  const user = await User.findById(userId).lean();
+  if (!user) throw new AppError(404, "User not found");
+
+  const wallets = await Wallet.find({ user: userId }).lean();
+  const walletIds = wallets.map((w) => w._id);
+
+  const transactions = await Transaction.find({
+    $or: [
+      { senderWalletId: { $in: walletIds } },
+      { receiverWalletId: { $in: walletIds } },
+    ],
+  })
+    .populate("senderWalletId", "user balance")
+    .populate("receiverWalletId", "user balance")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "User overview fetched successfully",
     data: {
-      senderWalletId: transaction.senderWalletId,
-      receiverWalletId: transaction.receiverWalletId,
-      amount: transaction.amount,
-      status: transaction.status,
+      user,
+      wallets,
+      transactions,
     },
   });
 });
-
-// Get My Transactions
-export const getMyTransactions = catchAsync(
-  async (req: Request, res: Response) => {
-    const userId = req.user._id;
-
-    const transactions = await WalletServices.getMyTransactions(userId);
-
-    sendResponse(res, {
-      statusCode: 200,
-      success: true,
-      message: "My sent transactions fetched successfully",
-      data: transactions,
-    });
-  }
-);
 
 export const WalletControllers = {
   createWallet,
@@ -99,5 +125,5 @@ export const WalletControllers = {
   depositMoney,
   withdrawMoney,
   sendMoney,
-  getMyTransactions,
+  getMyOverview,
 };

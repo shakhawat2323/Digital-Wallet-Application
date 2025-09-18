@@ -12,6 +12,7 @@ const createUser = async (payload: Partial<IUser>) => {
 
   // Check if user already exists
   const isUserExist = await User.findOne({ email });
+
   if (isUserExist) {
     throw new AppError(httpStatus.BAD_REQUEST, "User Already Exist");
   }
@@ -43,7 +44,8 @@ const createUser = async (payload: Partial<IUser>) => {
   // Create wallet automatically with initial balance TK50
   const wallet = await Wallet.create({
     user: user._id,
-    balance: 50, // initial balance
+    balance: 50,
+    email: user.email,
     currency: "BDT",
     type: walletType,
     status: "ACTIVE",
@@ -132,8 +134,34 @@ const updateUser = async (
   return updatedUser;
 };
 
+const getMe = async (userId: string) => {
+  const user = await User.findById(userId)
+    .select("-password -__v") // password hide করলাম
+    .populate("wallets"); // wallets details আনলো
+
+  return {
+    data: user,
+  };
+};
+const updateUserProfile = async (
+  userId: string,
+  payload: { name?: string; phone?: string }
+) => {
+  const existingUser = await User.findById(userId);
+  if (!existingUser) {
+    throw new AppError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+  if (payload.name) existingUser.name = payload.name;
+  if (payload.phone) existingUser.phone = payload.phone;
+
+  await existingUser.save();
+  return existingUser;
+};
 export const UserServices = {
   createUser,
   getAllUsers,
   updateUser,
+  getMe,
+  updateUserProfile,
 };

@@ -4,7 +4,13 @@ export interface ITransaction extends Document {
   senderWalletId: Schema.Types.ObjectId;
   receiverWalletId: Schema.Types.ObjectId;
   amount: number;
-  type: "DEPOSIT" | "WITHDRAW" | "TRANSFER" | "PAYMENT";
+  type:
+    | "DEPOSIT"
+    | "WITHDRAW"
+    | "TRANSFER"
+    | "PAYMENT"
+    | "CASH_OUT"
+    | "CASH_IN";
   status: "PENDING" | "COMPLETED" | "FAILED" | "CANCELLED";
 }
 export enum TransactionStatus {
@@ -29,7 +35,14 @@ const transactionSchema = new Schema<ITransaction>(
     amount: { type: Number, required: true },
     type: {
       type: String,
-      enum: ["DEPOSIT", "WITHDRAW", "TRANSFER", "PAYMENT"],
+      enum: [
+        "DEPOSIT",
+        "WITHDRAW",
+        "TRANSFER",
+        "PAYMENT",
+        "CASH_IN",
+        "CASH_OUT",
+      ],
       required: true,
     },
     status: {

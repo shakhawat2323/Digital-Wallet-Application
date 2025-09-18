@@ -1,19 +1,17 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import AppError from "../../errorHelpers/AppError";
 import { Wallet } from "./wallet.model";
-
 import httpStatus from "http-status-codes";
 import { Transaction } from "../transaction/transaction.model";
+import User from "../user/user.model";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const createWallet = async (payload: any) => {
   const { userId, balance, currency, type, isActive } = payload;
 
-  // check if userId is valid ObjectId
   if (!userId) {
     throw new AppError(httpStatus.BAD_REQUEST, "Invalid userId");
   }
 
-  // check wallet exists
   const isWalletExist = await Wallet.findOne({ user: userId });
   if (isWalletExist) {
     throw new AppError(
@@ -22,7 +20,6 @@ const createWallet = async (payload: any) => {
     );
   }
 
-  // create wallet
   const wallet = await Wallet.create({
     user: userId as string,
     balance: balance ?? 50,
@@ -44,23 +41,43 @@ const getMyWallet = async (userId: string) => {
   return wallet;
 };
 
-// Deposit money
-const depositMoney = async (walletId: string, amount: number) => {
-  const wallet = await Wallet.findById(walletId);
+// ✅ Deposit money
+
+const depositMoney = async (email: string, amount: number) => {
+  const wallet = await Wallet.findOne({ email });
+
   if (!wallet) {
-    throw new AppError(httpStatus.NOT_FOUND, "Wallet not found");
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      "Wallet not found with this email"
+    );
   }
 
   wallet.balance += amount;
   await wallet.save();
-  return wallet;
+
+  const transaction = await Transaction.create({
+    senderWalletId: wallet._id,
+    receiverWalletId: wallet._id,
+    amount,
+    email: wallet.email,
+    type: "DEPOSIT",
+    status: "COMPLETED",
+  });
+
+  return { wallet, transaction };
 };
 
-// Withdraw money
-const withdrawMoney = async (walletId: string, amount: number) => {
-  const wallet = await Wallet.findById(walletId);
+// ✅ Withdraw money
+
+const withdrawMoney = async (email: string, amount: number) => {
+  const wallet = await Wallet.findOne({ email });
+
   if (!wallet) {
-    throw new AppError(httpStatus.NOT_FOUND, "Wallet not found");
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      "Wallet not found with this email"
+    );
   }
 
   if (wallet.balance < amount) {
@@ -69,37 +86,41 @@ const withdrawMoney = async (walletId: string, amount: number) => {
 
   wallet.balance -= amount;
   await wallet.save();
-  return wallet;
+
+  const transaction = await Transaction.create({
+    senderWalletId: wallet._id,
+    receiverWalletId: wallet._id,
+    amount,
+    type: "WITHDRAW",
+    status: "COMPLETED",
+  });
+
+  return { wallet, transaction };
 };
 
+// ✅ Send money
+
 const sendMoney = async (
-  senderUserId: string,
-  receiverWalletId: string,
+  senderEmail: string,
+  receiverEmail: string,
   amount: number
 ) => {
-  const senderWallet = await Wallet.findOne({ user: senderUserId });
+  const senderWallet = await Wallet.findOne({ email: senderEmail });
+  const receiverWallet = await Wallet.findOne({ email: receiverEmail });
 
-  if (!senderWallet) {
-    throw new AppError(httpStatus.NOT_FOUND, "Sender wallet not found");
-  }
-
-  const receiverWallet = await Wallet.findById(receiverWalletId);
-  if (!receiverWallet) {
-    throw new AppError(httpStatus.NOT_FOUND, "Receiver wallet not found");
-  }
+  if (!senderWallet) throw new AppError(404, "Sender wallet not found");
+  if (!receiverWallet) throw new AppError(404, "Receiver wallet not found");
 
   if (senderWallet.balance < amount) {
-    throw new AppError(httpStatus.BAD_REQUEST, "Insufficient balance");
+    throw new AppError(400, "Insufficient balance");
   }
 
-  // Balance update
   senderWallet.balance -= amount;
   receiverWallet.balance += amount;
 
   await senderWallet.save();
   await receiverWallet.save();
 
-  // Transaction record create
   const transaction = await Transaction.create({
     senderWalletId: senderWallet._id,
     receiverWalletId: receiverWallet._id,
@@ -108,23 +129,39 @@ const sendMoney = async (
     status: "COMPLETED",
   });
 
-  return transaction;
+  return { senderWallet, receiverWallet, transaction };
 };
-const getMyTransactions = async (userId: string) => {
-  // user এর wallet বের করা
-  const senderWallet = await Wallet.findOne({ user: userId });
 
-  if (!senderWallet) {
-    throw new AppError(404, "Sender wallet not found");
-  }
+const getUserFullData = async (userId: string) => {
+  const userData = await User.findById(userId)
+    .populate({
+      path: "wallets",
+      populate: {
+        path: "_id", // wallet populate
+      },
+    })
+    .lean();
+
+  if (!userData) throw new Error("User not found");
+
+  // Wallet এর transactions নিয়ে আসা
+  const wallets = await Wallet.find({ user: userId }).lean();
+  const walletIds = wallets.map((w) => w._id);
 
   const transactions = await Transaction.find({
-    senderWalletId: senderWallet._id,
+    $or: [
+      { senderWalletId: { $in: walletIds } },
+      { receiverWalletId: { $in: walletIds } },
+    ],
   })
-    .populate("receiverWalletId", "user balance") // receiver এর wallet info
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
 
-  return transactions;
+  return {
+    user: userData,
+    wallets,
+    transactions,
+  };
 };
 
 export const WalletServices = {
@@ -133,5 +170,5 @@ export const WalletServices = {
   depositMoney,
   withdrawMoney,
   sendMoney,
-  getMyTransactions,
+  getUserFullData,
 };

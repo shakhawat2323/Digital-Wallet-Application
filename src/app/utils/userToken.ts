@@ -11,6 +11,7 @@ export const createUserTokens = (user: IUser) => {
     _id: (user._id as JwtPayload).toString(),
     email: user.email,
     role: user.role,
+    wallet: user.wallet,
   };
 
   const accessToken = generateToken(

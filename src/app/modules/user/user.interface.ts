@@ -35,8 +35,10 @@ export interface IUser {
   // isDeleted?: boolean;
   status?: AgentActive;
   isActive?: IsActive;
-  // isVerified?: boolean;
+  isVerified?: boolean;
   role: Role;
+
+  wallet?: string;
   auths: IAuthProvider[];
   wallets?: Types.ObjectId[];
 }
